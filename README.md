@@ -26,7 +26,16 @@ the toolchain actually works end-to-end; it was never meant to ship.
   itself: binutils 2.43.1, GCC 14.2.0, GDB 16.2, and glibc 2.41's bare
   headers/libs as crosstool-ng's own sysroot. Unpacks to a single
   top-level `x86_64-smechos-linux-gnu/` directory.
-- **`SHA256SUMS`** — checksum for the tarball above.
+- **`smechos-llvm-clang-x86_64-smechos-linux-gnu.tar.xz`** — a separate,
+  full LLVM/Clang 20.1.2 build (not produced by crosstool-ng — built
+  independently via `bootstrap_cross_llvm.py`). Built specifically
+  because Mesa's `radeonsi` driver has a hard build-time dependency on a
+  target-matching `llvm-config` (`dependency('llvm',
+  method:'config-tool')`); ships the complete, untrimmed LLVM toolchain
+  (all of Clang's own tools, not just `llvm-config` and the libraries
+  Mesa actually links against) rather than a pared-down build. Unpacks to
+  a single top-level `cross-build/` directory.
+- **`SHA256SUMS`** — checksums for both tarballs above.
 
 ## Versions, exactly
 
@@ -38,13 +47,16 @@ the toolchain actually works end-to-end; it was never meant to ship.
 | glibc | 2.41 |
 | GDB | 16.2 |
 | Linux kernel headers | 6.13 |
+| LLVM / Clang | 20.1.2 |
 
 ## Requirements to actually use this
 
 - **Host**: x86_64 Linux. Built and tested on the same host architecture
   it targets (this is a cross-toolchain by target triplet, not by host
   architecture — it still runs natively on x86_64).
-- **Disk**: ~423MB unpacked.
+- **Disk**: ~423MB unpacked for the GCC toolchain; ~4.6GB unpacked for
+  the LLVM/Clang build (full, untrimmed — includes test tools, fuzzer
+  binaries, etc., not just `llvm-config` and the runtime libraries).
 - **No installation step** — this is crosstool-ng's standard relocatable-ish
   layout. Unpack the tarball somewhere and point your build at the
   resulting path directly (see below). The toolchain prefix is marked
@@ -72,13 +84,24 @@ assembles as it goes — in `spk-compile.py`, each phase installs into a
 shared target staging tree, same as it does today against the
 container's glibc.
 
+For Mesa's `llvm-config` dependency specifically:
+
+```bash
+tar -xJf smechos-llvm-clang-x86_64-smechos-linux-gnu.tar.xz
+export PATH="$PWD/cross-build/bin:$PATH"
+llvm-config --version   # 20.1.2
+```
+Meson's cross-file `llvm-config` entry should point directly at
+`cross-build/bin/llvm-config` (this is exactly what `spk-compile.py`'s
+own `CROSS_LLVM_CONFIG` constant does).
+
 ## Licensing
 
 Built from unmodified upstream sources. GCC, binutils, and GDB are
-GPL-licensed; glibc is LGPL-licensed. This release redistributes
-compiled binaries of all of the above, same as any Linux distribution's
-own toolchain packages — see each upstream project for full license
-text.
+GPL-licensed; glibc is LGPL-licensed; LLVM/Clang is Apache 2.0 with LLVM
+exceptions. This release redistributes compiled binaries of all of the
+above, same as any Linux distribution's own toolchain packages — see
+each upstream project for full license text.
 
 ## Not included, on purpose
 
